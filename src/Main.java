@@ -14,7 +14,8 @@ public class Main {
 
 		System.out.println("\n**************\n");
 
-		handlerBase.getFilterTree("d");
+		handlerBase.getFilterTree("f");
+
 
 		handlerBase.closeConnectionToBD();
 	}

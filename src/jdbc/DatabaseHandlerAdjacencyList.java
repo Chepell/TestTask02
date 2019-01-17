@@ -61,7 +61,6 @@ public class DatabaseHandlerAdjacencyList {
 	 * метод для получения всех данных из БД в виде дерева и вывод на консоль
 	 */
 	public void getFullTree() {
-		// формат запроса на получение данных из БД
 		String query = String.format("WITH RECURSIVE cte AS(\n" +
 				"SELECT id, parent_id, name, 0 lvl FROM %1$s\n" +
 				"WHERE parent_id IS NULL\n" +
@@ -82,9 +81,9 @@ public class DatabaseHandlerAdjacencyList {
 	 */
 	public void getFilterTree(String str) {
 		createTmpTable();
-		clearTmpTable();
 		addToTmpTable(str);
 		getFilterTree();
+		deleteTmpTable();
 	}
 
 	/**
@@ -104,8 +103,15 @@ public class DatabaseHandlerAdjacencyList {
 	 * сервисный метод отчищения временной таблицы от данных
 	 */
 	private void clearTmpTable() {
-		// формат запроса на получение данных из БД
 		String query = String.format("TRUNCATE TABLE %s;", TMP_TABLE);
+		tableHandler(query);
+	}
+
+	/**
+	 * сервисный метод удаления временной таблицы из БД
+	 */
+	private void deleteTmpTable() {
+		String query = String.format("DROP TABLE IF EXISTS %s;", TMP_TABLE);
 		tableHandler(query);
 	}
 

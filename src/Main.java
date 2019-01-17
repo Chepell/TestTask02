@@ -10,11 +10,11 @@ public class Main {
 
 		DatabaseHandlerAdjacencyList handlerBase = new DatabaseHandlerAdjacencyList();
 
-		handlerBase.getFullTree();
+		handlerBase.showFullTree();
 
 		System.out.println("\n**************\n");
 
-		handlerBase.getFilterTree("f");
+		handlerBase.showFilterTree("f");
 
 
 		handlerBase.closeConnectionToBD();

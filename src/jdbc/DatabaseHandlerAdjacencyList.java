@@ -29,7 +29,7 @@ public class DatabaseHandlerAdjacencyList {
 	 *
 	 * @return возвращает объект коннекшена
 	 */
-	private synchronized Connection openConnectionToBD() {
+	private synchronized Connection getConnectionToBD() {
 		// собираю строку коннешена к БД
 		String connectionStr = String.
 				format("jdbc:mysql://%s:%s/%s?useSLL=false&serverTimezone=UTC", dbHost, dbPort, dbSchemaName);
@@ -60,7 +60,7 @@ public class DatabaseHandlerAdjacencyList {
 	/**
 	 * метод для получения всех данных из БД в виде дерева и вывод на консоль
 	 */
-	public void getFullTree() {
+	public void showFullTree() {
 		String query = String.format("WITH RECURSIVE cte AS(\n" +
 				"SELECT id, parent_id, name, 0 lvl FROM %1$s\n" +
 				"WHERE parent_id IS NULL\n" +
@@ -79,10 +79,10 @@ public class DatabaseHandlerAdjacencyList {
 	 *
 	 * @param str строка которая должна быть в именах конечных файлов
 	 */
-	public void getFilterTree(String str) {
+	public void showFilterTree(String str) {
 		createTmpTable();
 		addToTmpTable(str);
-		getFilterTree();
+		showFilterTree();
 		deleteTmpTable();
 	}
 
@@ -137,7 +137,7 @@ public class DatabaseHandlerAdjacencyList {
 	/**
 	 * сервисный метод для вывода на консоль в виде дерева данных из временной таблицы
 	 */
-	private void getFilterTree() {
+	private void showFilterTree() {
 		String query = String.format("WITH RECURSIVE cte AS(\n" +
 				"SELECT id, parent_id, name, 0 lvl FROM %1$s\n" +
 				"WHERE parent_id IS NULL\n" +
@@ -158,7 +158,7 @@ public class DatabaseHandlerAdjacencyList {
 	 */
 	private void queryHandler(String query) {
 		// создаю обращение к бд в try-with-resources
-		try (Statement st = openConnectionToBD().createStatement()) {
+		try (Statement st = getConnectionToBD().createStatement()) {
 			// выполняю запрос и получаю множесто результатов
 			ResultSet rs = st.executeQuery(query);
 			// итерируюсь по множеству
@@ -174,7 +174,7 @@ public class DatabaseHandlerAdjacencyList {
 
 	private void tableHandler(String query) {
 		// создаю обращение к бд в try-with-resources
-		try (Statement st = openConnectionToBD().createStatement()) {
+		try (Statement st = getConnectionToBD().createStatement()) {
 			// выполняю запрос и получаю множество результатов
 			st.execute(query);
 		} catch (SQLException e) {

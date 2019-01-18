@@ -17,7 +17,7 @@ public class DatabaseHandlerAdjacencyList {
 	private String dbPass = "sbertest";
 	private String dbSchemaName = "sber_tabel";
 	private static final String TABLE = "folders";
-	private static final String TMP_TABLE = TABLE + "_tmp";
+	private static final String VIEW = "view_" + TABLE;
 	private static final String ID = "id";
 	private static final String PARENT_ID = "parent_id";
 	private static final String NAME = "name";
@@ -56,7 +56,6 @@ public class DatabaseHandlerAdjacencyList {
 		}
 	}
 
-
 	/**
 	 * метод для получения всех данных из БД в виде дерева и вывод на консоль
 	 */
@@ -73,86 +72,64 @@ public class DatabaseHandlerAdjacencyList {
 		queryHandler(query);
 	}
 
-
 	/**
-	 * метод для получения из БД отфильтрованных данных в виде дерева и вывод на консоль
+	 * метод для получения из БД отфильтрованных данных
+	 * в виде дерева и вывод на консоль через VIEW в запросе
 	 *
 	 * @param str строка которая должна быть в именах конечных файлов
 	 */
-	public void showFilterTree(String str) {
-		createTmpTable();
-		addToTmpTable(str);
-		showFilterTree();
-		deleteTmpTable();
+	public void showFilterTreeWithView(String str) {
+		addFilterTableToView(str);
+		showFilterView();
 	}
 
 	/**
-	 * сервисный метод для создания временной таблицы в БД если она еще не создана
-	 */
-	private void createTmpTable() {
-		String query = String.format("CREATE TABLE IF NOT EXISTS %s (\n" +
-				"id INT(11) NOT NULL AUTO_INCREMENT,\n" +
-				"parent_id INT(11),\n" +
-				"name VARCHAR(200) NOT NULL,\n" +
-				"PRIMARY KEY (id))\n" +
-				"ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=latin1;", TMP_TABLE);
-		tableHandler(query);
-	}
-
-	/**
-	 * сервисный метод отчищения временной таблицы от данных
-	 */
-	private void clearTmpTable() {
-		String query = String.format("TRUNCATE TABLE %s;", TMP_TABLE);
-		tableHandler(query);
-	}
-
-	/**
-	 * сервисный метод удаления временной таблицы из БД
-	 */
-	private void deleteTmpTable() {
-		String query = String.format("DROP TABLE IF EXISTS %s;", TMP_TABLE);
-		tableHandler(query);
-	}
-
-	/**
-	 * сервисный метод для который помещает во врменную таблицу отфильтрованные данные
+	 * сервисный метод для который помещает в представление отфильтрованные данные
 	 *
 	 * @param str подстрока, которая должна содержаться в конечных элементах дерева
 	 */
-	private void addToTmpTable(String str) {
-		String query = String.format("INSERT INTO %s\n" +
+	private void addFilterTableToView(String str) {
+		String query = String.format("CREATE OR REPLACE VIEW %s AS\n" +
 				"WITH RECURSIVE cte AS (\n" +
-				"SELECT f1.id, f1.parent_id, f1.name AS leaf_list FROM folders f1\n" +
-				"LEFT JOIN folders f2 ON f2.parent_id = f1.id\n" +
-				"WHERE f2.id IS NULL AND f1.name LIKE '%%%s%%'\n" +
-				"UNION ALL\n" +
+				"SELECT f1.id, f1.parent_id, f1.name FROM %s f1\n" +
+				"LEFT JOIN %2$s f2 ON f2.parent_id = f1.id\n" +
+				"WHERE f2.id IS NULL AND f1.name LIKE '%%%s%%' UNION ALL\n" +
 				"SELECT f.id, f.parent_id, f.name FROM cte\n" +
-				"JOIN folders AS f ON cte.parent_id = f.id)\n" +
-				"SELECT DISTINCT * FROM cte\n" +
-				"ORDER BY id;", TMP_TABLE, str);
+				"JOIN %2$s AS f ON cte.parent_id = f.id)\n" +
+				"SELECT DISTINCT * FROM cte ORDER BY id;", VIEW, TABLE, str);
 		tableHandler(query);
 	}
 
 	/**
-	 * сервисный метод для вывода на консоль в виде дерева данных из временной таблицы
+	 * сервисный метод для вывода на консоль в виде дерева данных из VIEW
 	 */
-	private void showFilterTree() {
+	private void showFilterView() {
 		String query = String.format("WITH RECURSIVE cte AS(\n" +
-				"SELECT id, parent_id, name, 0 lvl FROM %1$s\n" +
-				"WHERE parent_id IS NULL\n" +
-				"UNION ALL\n" +
+				"SELECT id, parent_id, name, 0 lvl FROM %s\n" +
+				"WHERE parent_id IS NULL UNION ALL\n" +
 				"SELECT f.id, f.parent_id, CONCAT(REPEAT('  ',cte.lvl + 1), f.name), cte.lvl + 1 FROM cte\n" +
 				"JOIN %1$s AS f ON cte.id = f.parent_id)\n" +
-				"SELECT name FROM cte\n" +
-				"WHERE NOT name = 'ROOT'\n" +
-				"ORDER BY id, lvl;", TMP_TABLE);
+				"SELECT name FROM cte WHERE NOT name = 'ROOT' ORDER BY id, lvl;", VIEW);
 		queryHandler(query);
 	}
 
+	/**
+	 * сервисный метод обрабатывающий запросы к БД без получения данных
+	 *
+	 * @param query SQL запрос
+	 */
+	private void tableHandler(String query) {
+		// создаю обращение к бд в try-with-resources
+		try (Statement st = getConnectionToBD().createStatement()) {
+			st.executeUpdate(query);
+		} catch (SQLException e) {
+			System.out.println("Проблема с созданием TABEL, VIEW");
+		}
+	}
 
 	/**
-	 * сервисный метод обрабатывающий запрос к БД, вывод на консоль и автоматическое закрытие запроса
+	 * сервисный метод обрабатывающий запросы к БД с получением значений
+	 * вывод на консоль и автоматическое закрытие запроса
 	 *
 	 * @param query SQL запрос
 	 */
@@ -169,16 +146,6 @@ public class DatabaseHandlerAdjacencyList {
 			}
 		} catch (SQLException e) {
 			System.out.println("Проблема с получением данных из БД");
-		}
-	}
-
-	private void tableHandler(String query) {
-		// создаю обращение к бд в try-with-resources
-		try (Statement st = getConnectionToBD().createStatement()) {
-			// выполняю запрос и получаю множество результатов
-			st.execute(query);
-		} catch (SQLException e) {
-			System.out.println("Проблема с созданием БД");
 		}
 	}
 }

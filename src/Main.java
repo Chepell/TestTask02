@@ -13,9 +13,7 @@ public class Main {
 		handlerBase.showFullTree();
 
 		System.out.println("\n**************\n");
-
-		handlerBase.showFilterTree("f");
-
+		handlerBase.showFilterTreeWithView("f");
 
 		handlerBase.closeConnectionToBD();
 	}
